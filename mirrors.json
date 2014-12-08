@@ -1,0 +1,15 @@
+{
+	"192.168.0" : "http://centos.hyve.com/", 
+	"192.168.1" : "http://centos.hyve.com/", 
+	"192.168.2" : "http://centos.mirror.linuxwerk.com/", 
+	"192.168.3" : "http://mirrors.sonic.net/centos/", 
+	"192.168.4" : "http://mirrors.sonic.net/centos/", 
+	"192.168.5" : "http://mirrors.sonic.net/centos/", 
+	"192.168.6" : "http://mirror.itc.virginia.edu/CentOS/", 
+	"192.168.7" : "http://mirror.es.its.nyu.edu/centos/", 
+	"192.168.8" : "http://www.gtlib.gatech.edu/pub/centos/", 
+	"192.168.9" : "http://mirror.anl.gov/pub/centos/", 
+	"192.168.10" : "http://mirror.raystedman.net/centos/", 
+	"192.168.11"   : "http://mirror.fairway.ne.jp/centos/", 
+ 	"default"     : "http://mirrors.usc.edu/pub/linux/distributions/centos/"
+}
