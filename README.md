@@ -7,7 +7,6 @@ append ks=http://addressofthisserver/ks.cfg?version=6.5&ondisk=sdb
 ```
 
 only support couple of variable right now,
-version, ondisk, ip, gw, nm,
+version, ondisk, ip, gw, nm, hostname
 
 the mirrorlist maps your network into different mirrors which you can define yourself.
-

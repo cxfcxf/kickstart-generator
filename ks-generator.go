@@ -1,41 +1,77 @@
 package main
 
 import (
+    "os"
+    "log"
 	"fmt"
-	"log"
-	"strings"
+    "strconv"
+    "strings"
 	"net/http"
 	"io/ioutil"
-	"encoding/json"
+	"text/template"
+    "encoding/json"
 )
 
-func locateMirror(ip []string) string {
-	network := fmt.Sprintf("%s.%s.%s", ip[0], ip[1], ip[2])
+type Config struct {
+    Template    string
+    Shadow      string
+    Resolver    string
+    Mirror      map[string]string
+}
 
-	f, err := ioutil.ReadFile("./mirrors.json")
-	if err != nil { panic(err) }
+type QueryConfig struct {
+	Version		float64
+	Mirror		string
+	Password	string
+	Ipaddr		string
+	Netmask		string
+	Gateway		string
+	Nameserver	string
+    Hostname    string
+    Fstype      string
+	Ondisk		string
+	Offdisk		string
+}
 
-	var config map[string]string
-	json.Unmarshal(f, &config)
+func loadConfig(file string) Config{
+    f, err := ioutil.ReadFile(file)
+    if err != nil {
+        log.Println("failed to read config.json")
+        os.Exit(1)
+    }
 
-	for k, v := range config {
-		if network == k {
-			return v
-		}
-	}
-	if len(config["default"]) > 0 {
-		return config["default"]
-	} else {
-		return "http://mirror.centos.org/centos-6/"
-	}
+    var config Config
+
+    err = json.Unmarshal(f, &config)
+    if err != nil {
+        log.Println("failed to Parse config")
+        os.Exit(1)
+    }
+    return config
+}
+
+
+func locateMirror(ipaddr string, mirror map[string]string) string {
+
+    for k, v := range mirror {
+        if strings.Contains(ipaddr, k) {
+            return v
+        }
+    }
+    if len(mirror["default"]) > 0 {
+        return mirror["default"]
+    } else {
+        return "http://mirror.centos.org/centos-6/"
+    }
 }
 
 func handler(w http.ResponseWriter, r *http.Request) {
-	log.Printf("%s %s", r.RemoteAddr, r.URL)
+    log.Printf("%s %s", r.RemoteAddr, r.URL)
 	if r.URL.Path != "/ks.cfg" {
 		fmt.Fprintf(w, "please use /ks.cfg? to generate ks files")
 	} else {
-		shadows := "your password shadows"
+        // load config file config.json
+        config := loadConfig("config.json")
 
 		err := r.ParseForm()
 		if err != nil { panic(err) }
@@ -43,44 +79,48 @@ func handler(w http.ResponseWriter, r *http.Request) {
 
 		if len(r.RemoteAddr) < 12 { r.RemoteAddr = "127.0.0.1:8888" }
 
-		ip := strings.Split(r.RemoteAddr, ".")
 		ipaddr := strings.Split(r.RemoteAddr, ":")[0]
-		nm := "255.255.255.0"
-		gw := fmt.Sprintf("%s.%s.%s.1", ip[0], ip[1], ip[2])
-		mirror := locateMirror(ip)
+		netmask := "255.255.255.0"
+        ip := strings.Split(r.RemoteAddr, ".")
+		gateway := fmt.Sprintf("%s.%s.%s.1", ip[0], ip[1], ip[2])
+		mirror := locateMirror(ipaddr, config.Mirror)
 
-		version, fstype, ondisk, dorder := "6.5", "ext4", "", ""
-		if uri.Get("version") != "" {version = uri.Get("version")}
+		version, fstype, ondisk, offdisk, hostname := 6.6, "ext4", "", "", ""
+		if uri.Get("version") != "" {version, _ = strconv.ParseFloat(uri.Get("version"), 64)}
 		if uri.Get("fstype") != "" {fstype = uri.Get("fstype")}
-		if uri.Get("ondisk") != "" {
-			ondisk = "--ondisk=" + uri.Get("ondisk")
-			dorder = " --driveorder=" + uri.Get("ondisk")
-		}
-		
+		if uri.Get("ondisk") != "" {ondisk = uri.Get("ondisk")}
+        if uri.Get("offdisk") != "" {offdisk = uri.Get("offdisk")}
 		if uri.Get("ipaddr") != "" {ipaddr = uri.Get("ipaddr")}
-		if uri.Get("nm") != "" {nm = uri.Get("nm")}
+		if uri.Get("nm") != "" {netmask = uri.Get("nm")}
 		
 		// if you specify ip you must specify gw also, otherwise it will be 127.0.0.1
-		if uri.Get("gw") != "" {gw = uri.Get("gw")}
+		if uri.Get("gw") != "" {gateway = uri.Get("gw")}
+        if uri.Get("hostname") != "" {hostname = uri.Get("hostname")}
 
-		fmt.Fprintf(w, "# kickstart generator\n")
-		fmt.Fprintf(w, "install\n")
-		fmt.Fprintf(w, "url --url=%s%s/os/x86_64\n\n", mirror, version)
-		fmt.Fprintf(w, "rootpw --iscrypted %s\n\n", shadows)
-		fmt.Fprintf(w, "network --onboot yes --device eth0 --mtu=1500 --bootproto static --ip %s --netmask %s --gateway %s --nameserver 8.8.8.8\n", ipaddr, nm, gw)
-		fmt.Fprintf(w, "auth --useshadow --passalgo=sha512 --enablefingerprint\ntext\nkeyboard us\nlang en_US\nselinux --disabled\nfirewall --disabled\nskipx\nlogging --level=info\ntimezone --utc Etc/GMT\n\nzerombr\nclearpart --all\n\n")
-		fmt.Fprintf(w, "part / --fstype=%s --size=1 --grow %s --asprimary\n", fstype, ondisk)
-		fmt.Fprintf(w, "part swap --fstype=swap --size=4096 %s\n", ondisk)
-		fmt.Fprintf(w, "bootloader --location=mbr%s --append=\"crashkernel=auto rhgb quiet\"\n", dorder)
-		fmt.Fprintf(w, "firstboot --disable\nreboot\n\n")
-		fmt.Fprintf(w, "%%pre\n#/bin/sh\ntouch /tmp/part.cfg\n%%end\n\n")
-		fmt.Fprintf(w, "%%packages\n@base\n@core\n\n")
-		fmt.Fprintf(w, "%%post\n/usr/sbin/pwconv\n%%end")
-	}
+        fmt.Println(version)
+    	qc := &QueryConfig{
+    		version,
+    		mirror,
+    		config.Shadow,
+    		ipaddr,
+    		netmask,
+    		gateway,
+    		config.Resolver,
+            hostname,
+            fstype,
+    		ondisk,
+    		offdisk,
+    	}
+
+    	tp, _ := ioutil.ReadFile(config.Template)
+
+    	t := template.Must(template.New("ks-generator").Parse(string(tp)))
+    	t.Execute(w, qc)
+    }
 }
 
 func main() {
-	log.Println("Starting KS-Generator Web Service")
-	http.HandleFunc("/", handler)
-	http.ListenAndServe(":8888", nil)
+    log.Println("Starting KS-Generator Web Service")
+    http.HandleFunc("/", handler)
+    http.ListenAndServe(":8888", nil)
 }
