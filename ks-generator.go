@@ -3,12 +3,12 @@ package main
 import (
     "os"
     "log"
-	"fmt"
+    "fmt"
     "strconv"
     "strings"
-	"net/http"
-	"io/ioutil"
-	"text/template"
+    "net/http"
+    "io/ioutil"
+    "text/template"
     "encoding/json"
 )
 
@@ -20,17 +20,17 @@ type Config struct {
 }
 
 type QueryConfig struct {
-	Version		float64
-	Mirror		string
-	Password	string
-	Ipaddr		string
-	Netmask		string
-	Gateway		string
-	Nameserver	string
+    Version     float64
+    Mirror      string
+    Password    string
+    Ipaddr      string
+    Netmask     string
+    Gateway     string
+    Nameserver  string
     Hostname    string
     Fstype      string
-	Ondisk		string
-	Offdisk		string
+    Ondisk      string
+    Offdisk     string
 }
 
 func loadConfig(file string) Config{
@@ -67,55 +67,55 @@ func locateMirror(ipaddr string, mirror map[string]string) string {
 
 func handler(w http.ResponseWriter, r *http.Request) {
     log.Printf("%s %s", r.RemoteAddr, r.URL)
-	if r.URL.Path != "/ks.cfg" {
-		fmt.Fprintf(w, "please use /ks.cfg? to generate ks files")
-	} else {
+    if r.URL.Path != "/ks.cfg" {
+        fmt.Fprintf(w, "please use /ks.cfg? to generate ks files")
+    } else {
         // load config file config.json
         config := loadConfig("config.json")
 
-		err := r.ParseForm()
-		if err != nil { panic(err) }
-		uri := r.Form
+        err := r.ParseForm()
+        if err != nil { panic(err) }
+        uri := r.Form
 
-		if len(r.RemoteAddr) < 12 { r.RemoteAddr = "127.0.0.1:8888" }
+        if len(r.RemoteAddr) < 12 { r.RemoteAddr = "127.0.0.1:8888" }
 
-		ipaddr := strings.Split(r.RemoteAddr, ":")[0]
-		netmask := "255.255.255.0"
+        ipaddr := strings.Split(r.RemoteAddr, ":")[0]
+        netmask := "255.255.255.0"
         ip := strings.Split(r.RemoteAddr, ".")
-		gateway := fmt.Sprintf("%s.%s.%s.1", ip[0], ip[1], ip[2])
-		mirror := locateMirror(ipaddr, config.Mirror)
+        gateway := fmt.Sprintf("%s.%s.%s.1", ip[0], ip[1], ip[2])
+        mirror := locateMirror(ipaddr, config.Mirror)
 
-		version, fstype, ondisk, offdisk, hostname := 6.6, "ext4", "", "", ""
-		if uri.Get("version") != "" {version, _ = strconv.ParseFloat(uri.Get("version"), 64)}
-		if uri.Get("fstype") != "" {fstype = uri.Get("fstype")}
-		if uri.Get("ondisk") != "" {ondisk = uri.Get("ondisk")}
+        version, fstype, ondisk, offdisk, hostname := 6.6, "ext4", "", "", ""
+        if uri.Get("version") != "" {version, _ = strconv.ParseFloat(uri.Get("version"), 64)}
+        if uri.Get("fstype") != "" {fstype = uri.Get("fstype")}
+        if uri.Get("ondisk") != "" {ondisk = uri.Get("ondisk")}
         if uri.Get("offdisk") != "" {offdisk = uri.Get("offdisk")}
-		if uri.Get("ipaddr") != "" {ipaddr = uri.Get("ipaddr")}
-		if uri.Get("nm") != "" {netmask = uri.Get("nm")}
-		
-		// if you specify ip you must specify gw also, otherwise it will be 127.0.0.1
-		if uri.Get("gw") != "" {gateway = uri.Get("gw")}
+        if uri.Get("ipaddr") != "" {ipaddr = uri.Get("ipaddr")}
+        if uri.Get("nm") != "" {netmask = uri.Get("nm")}
+        
+        // if you specify ip you must specify gw also, otherwise it will be 127.0.0.1
+        if uri.Get("gw") != "" {gateway = uri.Get("gw")}
         if uri.Get("hostname") != "" {hostname = uri.Get("hostname")}
 
         fmt.Println(version)
-    	qc := &QueryConfig{
-    		version,
-    		mirror,
-    		config.Shadow,
-    		ipaddr,
-    		netmask,
-    		gateway,
-    		config.Resolver,
+        qc := &QueryConfig{
+            version,
+            mirror,
+            config.Shadow,
+            ipaddr,
+            netmask,
+            gateway,
+            config.Resolver,
             hostname,
             fstype,
-    		ondisk,
-    		offdisk,
-    	}
+            ondisk,
+            offdisk,
+        }
 
-    	tp, _ := ioutil.ReadFile(config.Template)
+        tp, _ := ioutil.ReadFile(config.Template)
 
-    	t := template.Must(template.New("ks-generator").Parse(string(tp)))
-    	t.Execute(w, qc)
+        t := template.Must(template.New("ks-generator").Parse(string(tp)))
+        t.Execute(w, qc)
     }
 }
 
