@@ -1,17 +1,17 @@
 # kickstart generator
 install
-url --url={{.Mirror}}
+url --url={{index .QueryData "mirror"}}
 
-rootpw --iscrypted {{.Password}}
+rootpw --iscrypted {{index .QueryData "password"}}
 
-network --onboot yes --device eth0 --mtu=1500 --bootproto static --ip {{.Ipaddr}} --netmask {{.Netmask}} --gateway {{.Gateway}} --nameserver {{.Nameserver}} {{if .Hostname}}--hostname {{.Hostname}}{{end}}
+network --onboot yes --device eth0 --mtu=1500 --bootproto static --ip {{index .QueryData "ipaddr"}} --netmask {{index .QueryData "nm"}} --gateway {{index .QueryData "gw"}} --nameserver {{index .QueryData "ns"}} --hostname {{index .QueryData "hn"}}
 auth --useshadow --passalgo=sha512 --enablefingerprint
 text
 keyboard us
 lang en_US
 selinux --disabled
 firewall --disabled
-{{if ge .Version 7.0}}eula --agreed{{end}}
+{{if ge (index .QueryData "version" | Atof) 7.0}}eula --agreed{{end}}
 skipx
 logging --level=info
 timezone --utc Etc/GMT
@@ -19,9 +19,9 @@ timezone --utc Etc/GMT
 zerombr
 clearpart --all
 
-part / --fstype={{.Fstype}} --size=1 --grow --ondisk={{.Ondisk}} --asprimary
-{{if .Offdisk}}part /data --fstype={{.Fstype}} --size=1 --grow --ondisk={{.Offdisk}}{{end}}
-bootloader --location=mbr --driveorder={{.Ondisk}} --append="crashkernel=auto rhgb quiet"
+part / --fstype={{index .QueryData "fstype"}} --size=1 --grow --ondisk={{index .QueryData "ondisk"}} --asprimary
+{{if index .QueryData "offdisk"}}part /data --fstype={{index .QueryData "fstype"}} --size=1 --grow --ondisk={{index .QueryData "offdisk"}}{{end}}
+bootloader --location=mbr --driveorder={{index .QueryData "ondisk"}} --append="crashkernel=auto rhgb quiet"
 firstboot --disable
 reboot
 
@@ -33,7 +33,7 @@ touch /tmp/part.cfg
 %packages
 @base
 @core
-{{if ge .Version 7.0}}%end{{end}}
+{{if ge (index .QueryData "version" | Atof) 7.0}}%end{{end}}
 
 %post
 /usr/sbin/pwconv

@@ -13,24 +13,13 @@ import (
 )
 
 type Config struct {
-    Template    string
     Shadow      string
-    Resolver    string
+    Listen      string
     Mirror      map[string]string
 }
 
 type QueryConfig struct {
-    Version     float64
-    Mirror      string
-    Password    string
-    Ipaddr      string
-    Netmask     string
-    Gateway     string
-    Nameserver  string
-    Hostname    string
-    Fstype      string
-    Ondisk      string
-    Offdisk     string
+    QueryData   map[string]string
 }
 
 func loadConfig(file string) Config{
@@ -50,6 +39,11 @@ func loadConfig(file string) Config{
     return config
 }
 
+func Atof(s string) float64 {
+    f, _ := strconv.ParseFloat(s, 64)
+    return f
+}
+
 
 func locateMirror(ipaddr string, mirror map[string]string) string {
 
@@ -66,7 +60,8 @@ func locateMirror(ipaddr string, mirror map[string]string) string {
 }
 
 func handler(w http.ResponseWriter, r *http.Request) {
-    log.Printf("%s %s", r.RemoteAddr, r.URL)
+    log.Printf("request address %s", r.RemoteAddr)
+    log.Printf("request uri %s", r.URL)
     if r.URL.Path != "/ks.cfg" {
         fmt.Fprintf(w, "please use /ks.cfg? to generate ks files")
     } else {
@@ -75,52 +70,44 @@ func handler(w http.ResponseWriter, r *http.Request) {
 
         err := r.ParseForm()
         if err != nil { panic(err) }
-        uri := r.Form
+
+        var qc QueryConfig
+        qc.QueryData = make(map[string]string)
+        for k, v := range r.Form {
+            qc.QueryData[k] = v[0]  //we only allow one key coresponding to one value (a key with multivlaue will be shrink to uri.Values[k][0])
+        }
 
         if len(r.RemoteAddr) < 12 { r.RemoteAddr = "127.0.0.1:8888" }
 
         ipaddr := strings.Split(r.RemoteAddr, ":")[0]
-        netmask := "255.255.255.0"
-        ip := strings.Split(r.RemoteAddr, ".")
-        gateway := fmt.Sprintf("%s.%s.%s.1", ip[0], ip[1], ip[2])
         mirror := locateMirror(ipaddr, config.Mirror)
 
-        version, fstype, ondisk, offdisk, hostname := 6.6, "ext4", "", "", ""
-        if uri.Get("version") != "" {version, _ = strconv.ParseFloat(uri.Get("version"), 64)}
-        if uri.Get("fstype") != "" {fstype = uri.Get("fstype")}
-        if uri.Get("ondisk") != "" {ondisk = uri.Get("ondisk")}
-        if uri.Get("offdisk") != "" {offdisk = uri.Get("offdisk")}
-        if uri.Get("ipaddr") != "" {ipaddr = uri.Get("ipaddr")}
-        if uri.Get("nm") != "" {netmask = uri.Get("nm")}
-        
-        // if you specify ip you must specify gw also, otherwise it will be 127.0.0.1
-        if uri.Get("gw") != "" {gateway = uri.Get("gw")}
-        if uri.Get("hostname") != "" {hostname = uri.Get("hostname")}
+        qc.QueryData["mirror"] = mirror
+        qc.QueryData["password"] = config.Shadow
 
-        fmt.Println(version)
-        qc := &QueryConfig{
-            version,
-            mirror,
-            config.Shadow,
-            ipaddr,
-            netmask,
-            gateway,
-            config.Resolver,
-            hostname,
-            fstype,
-            ondisk,
-            offdisk,
+        tmpl := "ks.tmpl"
+        if len(qc.QueryData["tmpl"]) > 0 {
+            tmpl = qc.QueryData["tmpl"]
         }
 
-        tp, _ := ioutil.ReadFile(config.Template)
+        tp, err := ioutil.ReadFile(tmpl)
+        if err != nil {
+            log.Println("fail to parse template, please check if template file exists")
+        }
 
-        t := template.Must(template.New("ks-generator").Parse(string(tp)))
+        funcMap := template.FuncMap{
+            "Atof": Atof,
+        }
+
+        t := template.Must(template.New("ks-generator").Funcs(funcMap).Parse(string(tp)))
         t.Execute(w, qc)
     }
 }
 
 func main() {
+    // this will only load once and lock config.Listen value
+    config := loadConfig("config.json")
     log.Println("Starting KS-Generator Web Service")
     http.HandleFunc("/", handler)
-    http.ListenAndServe(":8888", nil)
+    http.ListenAndServe(config.Listen, nil)
 }
