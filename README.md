@@ -7,7 +7,7 @@ Due to the feature it has, the program is more like quertstring to web text conv
 ### Notice 
 the url.Values will be parsed into map[string][]string[0] which means:
 ```
-ks.cfg?os=centos&os=freebsd
+ks.cfg?os=centos&os=ubuntu
 ```
 will result in:
 ```
@@ -18,7 +18,7 @@ the other multipart for same key will be stirpped out
 # How to use it:
 when you send a querystring to browser
 ```
-"http://127.0.0.1:8888/ks.cfg?os=centos&version=7.0&ondisk=sda&ipaddr=94.46.146.40&nm=255.255.255.0&gw=94.46.146.1&ns=8.8.8.8&hn=edge22-lhr-n.maxcdn.net&fstype=ext4&offdisk=sdb&tmpl=ks.tmpl"
+"http://127.0.0.1:8888/ks.cfg?version=7&ondisk=sda&ipaddr=94.46.146.40&nm=255.255.255.0&gw=94.46.146.1&ns=8.8.8.8&hn=www.ksgenerator.come&fstype=ext4&offdisk=sdb&tmpl=ks.tmpl"
 ```
 you will get a webtext in your browser depending on your self-defined template
 
@@ -52,12 +52,7 @@ so you can compare float64 number inside template which is handy for version com
 
 
 ### Config.json
-the file is configration file with mirror list.
-
-the mirror list is for you to decide which mirror you wanna use in which location,
-
-for example you have the server remotely, so you want to use fastest mirror in the 
-remote instead of going all the way back to USC's.
+removed not necessary
 
 # License
 Mit

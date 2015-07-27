@@ -1,7 +1,0 @@
-{
-    "shadow": "encrypted passwd for root",
-    "listen": "0.0.0.0:8888",
-    "mirror":{
-        "default"     : "http://mirrors.usc.edu/pub/linux/distributions/centos/"
-    }
-}

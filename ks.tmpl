@@ -1,8 +1,8 @@
 # kickstart generator
 install
-url --url={{index .QueryData "mirror"}}
+url --url=http://mirror.centos.org/centos/{{index .QueryData "version"}}/os/x86_64
 
-rootpw --iscrypted {{index .QueryData "password"}}
+rootpw --iscrypted "encrypted blah blah blah"
 
 network --onboot yes --device eth0 --mtu=1500 --bootproto static --ip {{index .QueryData "ipaddr"}} --netmask {{index .QueryData "nm"}} --gateway {{index .QueryData "gw"}} --nameserver {{index .QueryData "ns"}} --hostname {{index .QueryData "hn"}}
 auth --useshadow --passalgo=sha512 --enablefingerprint
